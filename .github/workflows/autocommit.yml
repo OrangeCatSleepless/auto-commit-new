@@ -1,0 +1,72 @@
+name: Auto commit
+
+on:
+  push:
+    branches:
+      - master
+      
+  schedule:
+    - cron: "0 */2 * * *" # 每两小时执行一次
+
+jobs:
+  auto_commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DEBUG 
+        run: echo "::debug::Ref = ${{github.ref}}"
+
+      - uses: actions/checkout@v3      
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Modify last update
+        run: |
+          d=`date '+%Y-%m-%dT%H:%M:%SZ'`
+          echo $d > LAST_UPDATED
+          
+      - name: 随机修改文件
+        run: |
+          files=(./updates/*.txt)
+          random_file=${files[$RANDOM % ${#files[@]}]}
+          timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+          
+          # 随机选择一个表情符号
+          emojis=("😂" "😱" "👿" "💩" "🙏" "🙈" "🐐" "🤖" "🟩" "👻" "🎉" "✨" "🔥" "🚀" "🌟" "💖")
+          random_emoji=${emojis[$RANDOM % ${#emojis[@]}]}
+          
+          # 使用 mapfile 读取文件内容到数组
+          mapfile -t lines < "$random_file"
+          
+          # 检查并修改第二行
+          if [ ${#lines[@]} -ge 2 ]; then
+            lines[1]="$random_emoji Random change in $random_file at $timestamp"
+          else
+            lines+=("$random_emoji Random change in $random_file at $timestamp")
+          fi
+          
+          # 将修改后的内容写回文件
+          printf "%s\n" "${lines[@]}" > "$random_file"
+
+      - name: 提交更改
+        run: |
+          git config --local user.email "xwhkeeno@duck.com"
+          git config --local user.name "OrangeCatSleepless"
+          git add -A
+
+          commit_types=("chore" "fix" "feat" "docs")
+          random_type=${commit_types[$RANDOM % ${#commit_types[@]}]}
+
+          emojis=("😂" "😱" "👿" "💩" "🙏" "🙈" "🐐" "🤖" "🟩" "👻" "🎉" "✨" "🔥" "🚀" "🌟" "💖")
+          random_emoji=${emojis[$RANDOM % ${#emojis[@]}]}
+
+          arr=("auto commit" "another auto commit" "yet another commit" "random update")
+          rand=$((RANDOM % ${#arr[@]}))
+          
+          git commit -m "${random_type}(bot): ${random_emoji} ${arr[$rand]}"
+
+      - name: GitHub Push
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          directory: "."
+          github_token: ${{ secrets.GITHUB_TOKEN }}
